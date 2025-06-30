@@ -2,6 +2,7 @@ use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use base58::ToBase58;
 use serde::{Deserialize, Serialize};
 use solana_sdk::signature::{Keypair, Signer};
+use std::env;
 
 #[derive(Serialize, Deserialize)]
 struct ApiResponse<T> {
@@ -23,12 +24,12 @@ struct KeypairResponse {
 
 async fn generate_keypair(_: web::Json<KeypairRequest>) -> impl Responder {
     let keypair = Keypair::new();
-    let secret_bytes = keypair.to_bytes(); // Get raw bytes of the keypair
+    let secret_bytes = keypair.to_bytes();
     let response = ApiResponse {
         success: true,
         data: Some(KeypairResponse {
             pubkey: keypair.pubkey().to_string(),
-            secret: secret_bytes.to_base58(), // Encode secret key to Base58
+            secret: secret_bytes.to_base58(),
         }),
         error: None,
     };
@@ -37,11 +38,16 @@ async fn generate_keypair(_: web::Json<KeypairRequest>) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+    let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+    let bind_address = format!("{}:{}", host, port);
+    
+    println!("Starting server at http://{}", bind_address);
     HttpServer::new(|| {
         App::new()
             .route("/keypair", web::post().to(generate_keypair))
     })
-    .bind("127.0.0.1:8080")?
+    .bind(bind_address)?
     .run()
     .await
 }
